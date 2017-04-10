@@ -1,0 +1,11 @@
+*.o
+*.swp
+*.bak
+/lora_pkt_fwd/global_conf.jsonus
+/lora_pkt_fwd/global_confcp.json
+/lora_pkt_fwd/global_confus.json
+/lora_pkt_fwd/global_conf.json.save
+/lora_pkt_fwd/global_conf.json.save.1
+/lora_pkt_fwd/global_conf.jsonaflb
+/lora_pkt_fwd/global_conf.jsonok
+/lora_pkt_fwd/global_conf.jsont
