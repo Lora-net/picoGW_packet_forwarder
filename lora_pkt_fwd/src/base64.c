@@ -27,7 +27,7 @@ Maintainer: Sylvain Miermont
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
 #define ARRAY_SIZE(a)       (sizeof(a) / sizeof((a)[0]))
-#define CRIT(a)             fprintf(stderr, "\nCRITICAL file:%s line:%u msg:%s\n", __FILE__, __LINE__,a);exit(EXIT_FAILURE)
+#define CRIT(a)             fprintf(stderr, "\nCRITICAL file:%s line:%d msg:%s\n", __FILE__, __LINE__, a);exit(EXIT_FAILURE)
 
 //#define DEBUG(args...)    fprintf(stderr,"debug: " args) /* diagnostic message that is destined to the user */
 #define DEBUG(args...)
@@ -62,9 +62,9 @@ char code_to_char(uint8_t x) {
     if (x <= 25) {
         return 'A' + x;
     } else if ((x >= 26) && (x <= 51)) {
-        return 'a' + (x-26);
+        return 'a' + (x - 26);
     } else if ((x >= 52) && (x <= 61)) {
-        return '0' + (x-52);
+        return '0' + (x - 52);
     } else if (x == 62) {
         return code_62;
     } else if (x == 63) {
@@ -131,39 +131,39 @@ int bin_to_b64_nopad(const uint8_t * in, int size, char * out, int max_len) {
     }
 
     /* check if output buffer is big enough */
-    result_len = (4*full_blocks) + last_chars;
+    result_len = (4 * full_blocks) + last_chars;
     if (max_len < (result_len + 1)) { /* 1 char added for string terminator */
         DEBUG("ERROR: OUTPUT BUFFER TOO SMALL IN BIN_TO_B64\n");
         return -1;
     }
 
     /* process all the full blocks */
-    for (i=0; i < full_blocks; ++i) {
-        b  = (0xFF & in[3*i]    ) << 16;
-        b |= (0xFF & in[3*i + 1]) << 8;
-        b |=  0xFF & in[3*i + 2];
-        out[4*i + 0] = code_to_char((b >> 18) & 0x3F);
-        out[4*i + 1] = code_to_char((b >> 12) & 0x3F);
-        out[4*i + 2] = code_to_char((b >> 6 ) & 0x3F);
-        out[4*i + 3] = code_to_char( b        & 0x3F);
+    for (i = 0; i < full_blocks; ++i) {
+        b  = (0xFF & in[3 * i]    ) << 16;
+        b |= (0xFF & in[3 * i + 1]) << 8;
+        b |=  0xFF & in[3 * i + 2];
+        out[4 * i + 0] = code_to_char((b >> 18) & 0x3F);
+        out[4 * i + 1] = code_to_char((b >> 12) & 0x3F);
+        out[4 * i + 2] = code_to_char((b >> 6 ) & 0x3F);
+        out[4 * i + 3] = code_to_char( b        & 0x3F);
     }
 
     /* process the last 'partial' block and terminate string */
     i = full_blocks;
     if (last_chars == 0) {
-        out[4*i] =  0; /* null character to terminate string */
+        out[4 * i] =  0; /* null character to terminate string */
     } else if (last_chars == 2) {
-        b  = (0xFF & in[3*i]    ) << 16;
-        out[4*i + 0] = code_to_char((b >> 18) & 0x3F);
-        out[4*i + 1] = code_to_char((b >> 12) & 0x3F);
-        out[4*i + 2] =  0; /* null character to terminate string */
+        b  = (0xFF & in[3 * i]    ) << 16;
+        out[4 * i + 0] = code_to_char((b >> 18) & 0x3F);
+        out[4 * i + 1] = code_to_char((b >> 12) & 0x3F);
+        out[4 * i + 2] =  0; /* null character to terminate string */
     } else if (last_chars == 3) {
-        b  = (0xFF & in[3*i]    ) << 16;
-        b |= (0xFF & in[3*i + 1]) << 8;
-        out[4*i + 0] = code_to_char((b >> 18) & 0x3F);
-        out[4*i + 1] = code_to_char((b >> 12) & 0x3F);
-        out[4*i + 2] = code_to_char((b >> 6 ) & 0x3F);
-        out[4*i + 3] = 0; /* null character to terminate string */
+        b  = (0xFF & in[3 * i]    ) << 16;
+        b |= (0xFF & in[3 * i + 1]) << 8;
+        out[4 * i + 0] = code_to_char((b >> 18) & 0x3F);
+        out[4 * i + 1] = code_to_char((b >> 12) & 0x3F);
+        out[4 * i + 2] = code_to_char((b >> 6 ) & 0x3F);
+        out[4 * i + 3] = 0; /* null character to terminate string */
     }
 
     return result_len;
@@ -208,38 +208,38 @@ int b64_to_bin_nopad(const char * in, int size, uint8_t * out, int max_len) {
     }
 
     /* check if output buffer is big enough */
-    result_len = (3*full_blocks) + last_bytes;
+    result_len = (3 * full_blocks) + last_bytes;
     if (max_len < result_len) {
         DEBUG("ERROR: OUTPUT BUFFER TOO SMALL IN B64_TO_BIN\n");
         return -1;
     }
 
     /* process all the full blocks */
-    for (i=0; i < full_blocks; ++i) {
-        b  = (0x3F & char_to_code(in[4*i]    )) << 18;
-        b |= (0x3F & char_to_code(in[4*i + 1])) << 12;
-        b |= (0x3F & char_to_code(in[4*i + 2])) << 6;
-        b |=  0x3F & char_to_code(in[4*i + 3]);
-        out[3*i + 0] = (b >> 16) & 0xFF;
-        out[3*i + 1] = (b >> 8 ) & 0xFF;
-        out[3*i + 2] =  b        & 0xFF;
+    for (i = 0; i < full_blocks; ++i) {
+        b  = (0x3F & char_to_code(in[4 * i]    )) << 18;
+        b |= (0x3F & char_to_code(in[4 * i + 1])) << 12;
+        b |= (0x3F & char_to_code(in[4 * i + 2])) << 6;
+        b |=  0x3F & char_to_code(in[4 * i + 3]);
+        out[3 * i + 0] = (b >> 16) & 0xFF;
+        out[3 * i + 1] = (b >> 8 ) & 0xFF;
+        out[3 * i + 2] =  b        & 0xFF;
     }
 
     /* process the last 'partial' block */
     i = full_blocks;
     if (last_bytes == 1) {
-        b  = (0x3F & char_to_code(in[4*i]    )) << 18;
-        b |= (0x3F & char_to_code(in[4*i + 1])) << 12;
-        out[3*i + 0] = (b >> 16) & 0xFF;
+        b  = (0x3F & char_to_code(in[4 * i]    )) << 18;
+        b |= (0x3F & char_to_code(in[4 * i + 1])) << 12;
+        out[3 * i + 0] = (b >> 16) & 0xFF;
         if (((b >> 12) & 0x0F) != 0) {
             DEBUG("WARNING: last character contains unusable bits\n");
         }
     } else if (last_bytes == 2) {
-        b  = (0x3F & char_to_code(in[4*i]    )) << 18;
-        b |= (0x3F & char_to_code(in[4*i + 1])) << 12;
-        b |= (0x3F & char_to_code(in[4*i + 2])) << 6;
-        out[3*i + 0] = (b >> 16) & 0xFF;
-        out[3*i + 1] = (b >> 8 ) & 0xFF;
+        b  = (0x3F & char_to_code(in[4 * i]    )) << 18;
+        b |= (0x3F & char_to_code(in[4 * i + 1])) << 12;
+        b |= (0x3F & char_to_code(in[4 * i + 2])) << 6;
+        out[3 * i + 0] = (b >> 16) & 0xFF;
+        out[3 * i + 1] = (b >> 8 ) & 0xFF;
         if (((b >> 6) & 0x03) != 0) {
             DEBUG("WARNING: last character contains unusable bits\n");
         }
@@ -256,7 +256,7 @@ int bin_to_b64(const uint8_t * in, int size, char * out, int max_len) {
     if (ret == -1) {
         return -1;
     }
-    switch (ret%4) {
+    switch (ret % 4) {
         case 0: /* nothing to do */
             return ret;
         case 1:
@@ -265,9 +265,9 @@ int bin_to_b64(const uint8_t * in, int size, char * out, int max_len) {
         case 2: /* 2 chars in last block, must add 2 padding char */
             if (max_len >= (ret + 2 + 1)) {
                 out[ret] = code_pad;
-                out[ret+1] = code_pad;
-                out[ret+2] = 0;
-                return ret+2;
+                out[ret + 1] = code_pad;
+                out[ret + 2] = 0;
+                return ret + 2;
             } else {
                 DEBUG("ERROR: not enough room to add padding in bin_to_b64\n");
                 return -1;
@@ -275,8 +275,8 @@ int bin_to_b64(const uint8_t * in, int size, char * out, int max_len) {
         case 3: /* 3 chars in last block, must add 1 padding char */
             if (max_len >= (ret + 1 + 1)) {
                 out[ret] = code_pad;
-                out[ret+1] = 0;
-                return ret+1;
+                out[ret + 1] = 0;
+                return ret + 1;
             } else {
                 DEBUG("ERROR: not enough room to add padding in bin_to_b64\n");
                 return -1;
@@ -291,11 +291,11 @@ int b64_to_bin(const char * in, int size, uint8_t * out, int max_len) {
         DEBUG("ERROR: NULL POINTER AS OUTPUT OR INPUT IN B64_TO_BIN\n");
         return -1;
     }
-    if ((size%4 == 0) && (size >= 4)) { /* potentially padded Base64 */
-        if (in[size-2] == code_pad) { /* 2 padding char to ignore */
-            return b64_to_bin_nopad(in, size-2, out, max_len);
-        } else if (in[size-1] == code_pad) { /* 1 padding char to ignore */
-            return b64_to_bin_nopad(in, size-1, out, max_len);
+    if ((size % 4 == 0) && (size >= 4)) { /* potentially padded Base64 */
+        if (in[size - 2] == code_pad) { /* 2 padding char to ignore */
+            return b64_to_bin_nopad(in, size - 2, out, max_len);
+        } else if (in[size - 1] == code_pad) { /* 1 padding char to ignore */
+            return b64_to_bin_nopad(in, size - 1, out, max_len);
         } else { /* no padding to ignore */
             return b64_to_bin_nopad(in, size, out, max_len);
         }

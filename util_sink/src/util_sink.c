@@ -19,9 +19,9 @@ Maintainer: Sylvain Miermont
 
 /* fix an issue between POSIX and C99 */
 #if __STDC_VERSION__ >= 199901L
-    #define _XOPEN_SOURCE 600
+#define _XOPEN_SOURCE 600
 #else
-    #define _XOPEN_SOURCE 500
+#define _XOPEN_SOURCE 500
 #endif
 
 #include <stdint.h>     /* C99 types */
@@ -48,8 +48,7 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     int i; /* loop variable and temporary variable for return value */
 
     /* server socket creation */
@@ -86,8 +85,8 @@ int main(int argc, char **argv)
     }
 
     /* try to open socket and bind it */
-    for (q=result; q!=NULL; q=q->ai_next) {
-        sock = socket(q->ai_family, q->ai_socktype,q->ai_protocol);
+    for (q = result; q != NULL; q = q->ai_next) {
+        sock = socket(q->ai_family, q->ai_socktype, q->ai_protocol);
         if (sock == -1) {
             continue; /* socket failed, try next field */
         } else {
@@ -103,7 +102,7 @@ int main(int argc, char **argv)
     if (q == NULL) {
         MSG("ERROR: failed to open socket or to bind to it\n");
         i = 1;
-        for (q=result; q!=NULL; q=q->ai_next) {
+        for (q = result; q != NULL; q = q->ai_next) {
             getnameinfo(q->ai_addr, q->ai_addrlen, host_name, sizeof host_name, port_name, sizeof port_name, NI_NUMERICHOST);
             MSG("result %i host:%s service:%s\n", i, host_name, port_name);
             ++i;

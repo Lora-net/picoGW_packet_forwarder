@@ -19,9 +19,9 @@ Maintainer: Sylvain Miermont
 
 /* fix an issue between POSIX and C99 */
 #if __STDC_VERSION__ >= 199901L
-    #define _XOPEN_SOURCE 600
+#define _XOPEN_SOURCE 600
 #else
-    #define _XOPEN_SOURCE 500
+#define _XOPEN_SOURCE 500
 #endif
 
 #include <stdint.h>     /* C99 types */
@@ -107,8 +107,7 @@ void usage(void) {
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     int i, j, x;
     unsigned int xu;
     char arg_s[64];
@@ -182,7 +181,7 @@ int main(int argc, char **argv)
                 break;
 
             case 'm': /* -m <str> Modulation type */
-                i = sscanf(optarg, "%s", arg_s);
+                i = sscanf(optarg, "%63s", arg_s);
                 if ((i != 1) || ((strcmp(arg_s, "LORA") != 0) && (strcmp(arg_s, "FSK")))) {
                     MSG("ERROR: invalid modulation type\n");
                     usage();
@@ -254,7 +253,7 @@ int main(int argc, char **argv)
                 break;
 
             case 'x': /* -x <int> numbers of times the sequence is repeated */
-                i = sscanf(optarg, "%u", &repeat);
+                i = sscanf(optarg, "%d", &repeat);
                 if ((i != 1) || (repeat < 1)) {
                     MSG("ERROR: invalid number of repeats\n");
                     return EXIT_FAILURE;
@@ -263,7 +262,7 @@ int main(int argc, char **argv)
 
             case 'v': /* -v <uint> test Id */
                 i = sscanf(optarg, "%u", &xu);
-                if ((i != 1) || ((xu < 1) && (xu > 255))) {
+                if ((i != 1) || ((xu < 1) || (xu > 255))) {
                     MSG("ERROR: invalid Id\n");
                     return EXIT_FAILURE;
                 } else {
@@ -290,8 +289,8 @@ int main(int argc, char **argv)
     }
 
     /* try to open socket and bind to it */
-    for (q=result; q!=NULL; q=q->ai_next) {
-        sock = socket(q->ai_family, q->ai_socktype,q->ai_protocol);
+    for (q = result; q != NULL; q = q->ai_next) {
+        sock = socket(q->ai_family, q->ai_socktype, q->ai_protocol);
         if (sock == -1) {
             continue; /* socket failed, try next field */
         } else {
@@ -320,9 +319,9 @@ int main(int argc, char **argv)
 
     /* display setup summary */
     if (strcmp(mod, "FSK") == 0) {
-        MSG("INFO: %i FSK pkts @%f MHz (FDev %u kHz, Bitrate %.2f kbps, %uB payload) %i dBm, %i ms between each\n", repeat, f_target, fdev_khz, br_kbps, payload_size, pow, delay);
+        MSG("INFO: %i FSK pkts @%f MHz (FDev %u kHz, Bitrate %.2f kbps, %dB payload) %i dBm, %i ms between each\n", repeat, f_target, fdev_khz, br_kbps, payload_size, pow, delay);
     } else {
-        MSG("INFO: %i LoRa pkts @%f MHz (BW %u kHz, SF%i, %uB payload) %i dBm, %i ms between each\n", repeat, f_target, bw, sf, payload_size, pow, delay);
+        MSG("INFO: %i LoRa pkts @%f MHz (BW %d kHz, SF%i, %dB payload) %i dBm, %i ms between each\n", repeat, f_target, bw, sf, payload_size, pow, delay);
     }
 
     /* wait to receive a PULL_DATA request packet */
@@ -341,8 +340,8 @@ int main(int argc, char **argv)
     }
 
     /* retrieve gateway MAC from the request */
-    raw_mac_h = *((uint32_t *)(databuf+4));
-    raw_mac_l = *((uint32_t *)(databuf+8));
+    raw_mac_h = *((uint32_t *)(databuf + 4));
+    raw_mac_l = *((uint32_t *)(databuf + 8));
     gw_mac = ((uint64_t)ntohl(raw_mac_h) << 32) + (uint64_t)ntohl(raw_mac_l);
 
     /* display info about the sender */
@@ -366,10 +365,10 @@ int main(int argc, char **argv)
 
     /* TX frequency */
     i = snprintf((char *)(databuf + buff_index), 20, ",\"freq\":%.6f", f_target);
-    if ((i>=0) && (i < 20)) {
+    if ((i >= 0) && (i < 20)) {
         buff_index += i;
     } else {
-        MSG("ERROR: snprintf failed line %u\n", (__LINE__ - 4));
+        MSG("ERROR: snprintf failed line %d\n", (__LINE__ - 4));
         exit(EXIT_FAILURE);
     }
 
@@ -379,28 +378,28 @@ int main(int argc, char **argv)
 
     /* TX power */
     i = snprintf((char *)(databuf + buff_index), 12, ",\"powe\":%i", pow);
-    if ((i>=0) && (i < 12)) {
+    if ((i >= 0) && (i < 12)) {
         buff_index += i;
     } else {
-        MSG("ERROR: snprintf failed line %u\n", (__LINE__ - 4));
+        MSG("ERROR: snprintf failed line %d\n", (__LINE__ - 4));
         exit(EXIT_FAILURE);
     }
 
     /* modulation type and parameters */
     if (strcmp(mod, "FSK") == 0) {
-        i = snprintf((char *)(databuf + buff_index), 50, ",\"modu\":\"FSK\",\"datr\":%u,\"fdev\":%u", (unsigned int)(br_kbps*1e3), (unsigned int)(fdev_khz*1e3));
-        if ((i>=0) && (i < 50)) {
+        i = snprintf((char *)(databuf + buff_index), 50, ",\"modu\":\"FSK\",\"datr\":%u,\"fdev\":%u", (unsigned int)(br_kbps * 1e3), (unsigned int)(fdev_khz * 1e3));
+        if ((i >= 0) && (i < 50)) {
             buff_index += i;
         } else {
-            MSG("ERROR: snprintf failed line %u\n", (__LINE__ - 4));
+            MSG("ERROR: snprintf failed line %d\n", (__LINE__ - 4));
             exit(EXIT_FAILURE);
         }
     } else {
         i = snprintf((char *)(databuf + buff_index), 50, ",\"modu\":\"LORA\",\"datr\":\"SF%iBW%i\",\"codr\":\"4/6\"", sf, bw);
-        if ((i>=0) && (i < 50)) {
+        if ((i >= 0) && (i < 50)) {
             buff_index += i;
         } else {
-            MSG("ERROR: snprintf failed line %u\n", (__LINE__ - 4));
+            MSG("ERROR: snprintf failed line %d\n", (__LINE__ - 4));
             exit(EXIT_FAILURE);
         }
     }
@@ -422,10 +421,10 @@ int main(int argc, char **argv)
 
     /* payload size */
     i = snprintf((char *)(databuf + buff_index), 12, ",\"size\":%i", payload_size);
-    if ((i>=0) && (i < 12)) {
+    if ((i >= 0) && (i < 12)) {
         buff_index += i;
     } else {
-        MSG("ERROR: snprintf failed line %u\n", (__LINE__ - 4));
+        MSG("ERROR: snprintf failed line %d\n", (__LINE__ - 4));
         exit(EXIT_FAILURE);
     }
 
@@ -439,7 +438,7 @@ int main(int argc, char **argv)
     if (x >= 0) {
         buff_index += x;
     } else {
-        MSG("ERROR: bin_to_b64 failed line %u\n", (__LINE__ - 4));
+        MSG("ERROR: bin_to_b64 failed line %d\n", (__LINE__ - 4));
         exit(EXIT_FAILURE);
     }
 
@@ -460,7 +459,7 @@ int main(int argc, char **argv)
         payload_bin[7] = 'R';
         payload_bin[8] = (uint8_t)(payload_bin[0] + payload_bin[1] + payload_bin[2] + payload_bin[3] + payload_bin[4] + payload_bin[5] + payload_bin[6] + payload_bin[7]);
         for (j = 0; j < (payload_size - 9); j++) {
-            payload_bin[9+j] = j;
+            payload_bin[9 + j] = j;
         }
 
 #if 0
@@ -475,7 +474,7 @@ int main(int argc, char **argv)
         if (x >= 0) {
             memcpy((void *)(databuf + payload_index), (void *)payload_b64, x);
         } else {
-            MSG("ERROR: bin_to_b64 failed line %u\n", (__LINE__ - 4));
+            MSG("ERROR: bin_to_b64 failed line %d\n", (__LINE__ - 4));
             exit(EXIT_FAILURE);
         }
 
@@ -497,7 +496,7 @@ int main(int argc, char **argv)
     }
 
 
-exit(EXIT_SUCCESS);
+    exit(EXIT_SUCCESS);
 }
 
 /* --- EOF ------------------------------------------------------------------ */

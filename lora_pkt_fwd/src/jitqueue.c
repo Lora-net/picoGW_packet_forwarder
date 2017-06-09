@@ -91,8 +91,7 @@ void jit_queue_init(struct jit_queue_s *queue) {
     pthread_mutex_unlock(&mx_jit_queue);
 }
 
-int compare(const void *a, const void *b, void *arg)
-{
+int compare(const void *a, const void *b, void *arg) {
     struct jit_node_s *p = (struct jit_node_s *)a;
     struct jit_node_s *q = (struct jit_node_s *)b;
     int *counter = (int *)arg;

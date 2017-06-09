@@ -8,11 +8,8 @@
 
 Description:
     Configure Lora concentrator and forward packets to a server
-    Use GPS for packet timestamping.
-    Send a becon at a regular interval without server intervention
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
-Maintainer: Michael Coracin
 */
 
 
@@ -97,6 +94,8 @@ Maintainer: Michael Coracin
 
 #define STATUS_SIZE     200
 #define TX_BUFF_SIZE    ((540 * NB_PKT_MAX) + 30 + STATUS_SIZE)
+
+#define COM_PATH_DEFAULT "/dev/ttyACM0"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE TYPES -------------------------------------------------------- */
@@ -218,6 +217,11 @@ void thread_timersync(void);
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
+static void exit_cleanup(void) {
+    MSG("INFO: Stopping concentrator\n");
+    lgw_stop();
+}
+
 static void sig_handler(int sigio) {
     if (sigio == SIGQUIT) {
         quit_sig = true;
@@ -225,6 +229,17 @@ static void sig_handler(int sigio) {
         exit_sig = true;
     }
     return;
+}
+
+static void usage(void) {
+    MSG("~~~ Software versions ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    MSG(" Packet Forwarder: Version: " VERSION_STRING "\n");
+    MSG(" HAL library: %s\n", lgw_version_info());
+    MSG("~~~ Available options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    MSG(" -h  print this help\n");
+    MSG(" -d <path> COM device to be used to access the concentrator board\n");
+    MSG("            => default path: " COM_PATH_DEFAULT "\n");
+    MSG("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 }
 
 static int parse_SX1301_configuration(const char * conf_file) {
@@ -399,14 +414,11 @@ static int parse_SX1301_configuration(const char * conf_file) {
                     if ((tx_freq_min[i] == 0) || (tx_freq_max[i] == 0)) {
                         MSG("WARNING: no frequency range specified for TX rf chain %d\n", i);
                     }
-                    /* ... and the notch filter frequency to be set */
-                    snprintf(param_name, sizeof param_name, "radio_%i.tx_notch_freq", i);
-                    rfconf.tx_notch_freq = (uint32_t)json_object_dotget_number(conf_obj, param_name);
                 }
             } else {
                 rfconf.tx_enable = false;
             }
-            MSG("INFO: radio %i enabled (type %s), center frequency %u, RSSI offset %f, tx enabled %d, tx_notch_freq %u\n", i, str, rfconf.freq_hz, rfconf.rssi_offset, rfconf.tx_enable, rfconf.tx_notch_freq);
+            MSG("INFO: radio %i enabled (type %s), center frequency %u, RSSI offset %f, tx enabled %d\n", i, str, rfconf.freq_hz, rfconf.rssi_offset, rfconf.tx_enable);
         }
         /* all parameters parsed, submitting configuration to the HAL */
         if (lgw_rxrf_setconf(i, rfconf) != LGW_HAL_SUCCESS) {
@@ -538,29 +550,21 @@ static int parse_SX1301_configuration(const char * conf_file) {
             }
             if      (bw == 0) {
                 ifconf.bandwidth = BW_UNDEFINED;
-            }
-            else if (bw <= 7800) {
+            } else if (bw <= 7800) {
                 ifconf.bandwidth = BW_7K8HZ;
-            }
-            else if (bw <= 15600) {
+            } else if (bw <= 15600) {
                 ifconf.bandwidth = BW_15K6HZ;
-            }
-            else if (bw <= 31200) {
+            } else if (bw <= 31200) {
                 ifconf.bandwidth = BW_31K2HZ;
-            }
-            else if (bw <= 62500) {
+            } else if (bw <= 62500) {
                 ifconf.bandwidth = BW_62K5HZ;
-            }
-            else if (bw <= 125000) {
+            } else if (bw <= 125000) {
                 ifconf.bandwidth = BW_125KHZ;
-            }
-            else if (bw <= 250000) {
+            } else if (bw <= 250000) {
                 ifconf.bandwidth = BW_250KHZ;
-            }
-            else if (bw <= 500000) {
+            } else if (bw <= 500000) {
                 ifconf.bandwidth = BW_500KHZ;
-            }
-            else {
+            } else {
                 ifconf.bandwidth = BW_UNDEFINED;
             }
 
@@ -803,11 +807,14 @@ static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error)
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(void)
-{
+int main(int argc, char **argv) {
     struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
     int i; /* loop variable and temporary variable for return value */
     int x;
+
+    /* COM interfaces */
+    const char com_path_default[] = COM_PATH_DEFAULT;
+    const char *com_path = com_path_default;
 
     /* configuration file related */
     char *global_cfg_path = "global_conf.json"; /* contain global (typ. network-wide) configuration */
@@ -862,11 +869,49 @@ int main(void)
     float up_ack_ratio;
     float dw_ack_ratio;
 
+    /* Parse command line options */
+    while((i = getopt(argc, argv, "hd:")) != -1) {
+        switch(i) {
+        case 'h':
+            usage();
+            return EXIT_SUCCESS;
 
+        case 'd':
+            if (optarg != NULL) {
+                com_path = optarg;
+            }
+            break;
+
+        default:
+            MSG("ERROR: argument parsing options, use -h option for help\n");
+            usage();
+            return EXIT_FAILURE;
+        }
+    }
 
     /* display version informations */
-    MSG("*** Beacon Packet Forwarder for Lora PicoGateway ***\nVersion: " VERSION_STRING "\n");
-    MSG("*** Lora concentrator HAL library version info ***\n%s\n***\n", lgw_version_info());
+    MSG("*** Packet Forwarder for Lora PicoCell Gateway ***\nVersion: " VERSION_STRING "\n");
+    MSG("*** Lora concentrator HAL library version info ***\n%s\n", lgw_version_info());
+
+    /* register function to be called for exit cleanups */
+    atexit(exit_cleanup);
+
+    /* configure signal handling */
+    sigemptyset(&sigact.sa_mask);
+    sigact.sa_flags = 0;
+    sigact.sa_handler = sig_handler;
+    sigaction(SIGQUIT, &sigact, NULL); /* Ctrl-\ */
+    sigaction(SIGINT, &sigact, NULL); /* Ctrl-C */
+    sigaction(SIGTERM, &sigact, NULL); /* default "kill" command */
+
+    /* Open communication bridge */
+    x = lgw_connect(com_path);
+    if (x == LGW_REG_ERROR) {
+        MSG("ERROR: FAIL TO CONNECT BOARD ON %s\n", com_path);
+        exit(EXIT_FAILURE);
+    }
+
+    MSG("*** MCU FW version for LoRa PicoCell Gateway ***\nVersion: 0x%08X\n***\n", lgw_mcu_version_info());
 
     /* display host endianness */
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
@@ -876,13 +921,7 @@ int main(void)
 #else
     MSG("INFO: Host endianness unknown\n");
 #endif
-    int reg_stat;
-    reg_stat = lgw_connect(false);
-    if (reg_stat == LGW_REG_ERROR) {
-        MSG("ERROR: FAIL TO CONNECT BOARD\n");
-        exit(EXIT_FAILURE);
-    }
-    MSG("*** PicoGateway MCU version FW info ***\nVersion: FW_%x\n***\n", lgw_MCUversion_info());
+
     /* load configuration files */
     if (access(debug_cfg_path, R_OK) == 0) { /* if there is a debug conf, parse only the debug conf */
         MSG("INFO: found debug configuration file %s, parsing it\n", debug_cfg_path);
@@ -953,8 +992,7 @@ int main(void)
         sock_up = socket(q->ai_family, q->ai_socktype, q->ai_protocol);
         if (sock_up == -1) {
             continue;    /* try next field */
-        }
-        else {
+        } else {
             break;    /* success, get out of loop */
         }
     }
@@ -989,8 +1027,7 @@ int main(void)
         sock_down = socket(q->ai_family, q->ai_socktype, q->ai_protocol);
         if (sock_down == -1) {
             continue;    /* try next field */
-        }
-        else {
+        } else {
             break;    /* success, get out of loop */
         }
     }
@@ -1043,14 +1080,6 @@ int main(void)
         MSG("ERROR: [main] impossible to create Timer Sync thread\n");
         exit(EXIT_FAILURE);
     }
-
-    /* configure signal handling */
-    sigemptyset(&sigact.sa_mask);
-    sigact.sa_flags = 0;
-    sigact.sa_handler = sig_handler;
-    sigaction(SIGQUIT, &sigact, NULL); /* Ctrl-\ */
-    sigaction(SIGINT, &sigact, NULL); /* Ctrl-C */
-    sigaction(SIGTERM, &sigact, NULL); /* default "kill" command */
 
     /* main loop task : statistics collection */
     while (!exit_sig && !quit_sig) {
@@ -1862,23 +1891,17 @@ void thread_down(void) {
                 }
                 if      (strcmp(str, "4/5") == 0) {
                     txpkt.coderate = CR_LORA_4_5;
-                }
-                else if (strcmp(str, "4/6") == 0) {
+                } else if (strcmp(str, "4/6") == 0) {
                     txpkt.coderate = CR_LORA_4_6;
-                }
-                else if (strcmp(str, "2/3") == 0) {
+                } else if (strcmp(str, "2/3") == 0) {
                     txpkt.coderate = CR_LORA_4_6;
-                }
-                else if (strcmp(str, "4/7") == 0) {
+                } else if (strcmp(str, "4/7") == 0) {
                     txpkt.coderate = CR_LORA_4_7;
-                }
-                else if (strcmp(str, "4/8") == 0) {
+                } else if (strcmp(str, "4/8") == 0) {
                     txpkt.coderate = CR_LORA_4_8;
-                }
-                else if (strcmp(str, "1/2") == 0) {
+                } else if (strcmp(str, "1/2") == 0) {
                     txpkt.coderate = CR_LORA_4_8;
-                }
-                else {
+                } else {
                     MSG("WARNING: [down] format error in \"txpk.codr\", TX aborted\n");
                     json_value_free(root_val);
                     continue;
@@ -2088,7 +2111,6 @@ void thread_jit(void) {
                     /* send packet to concentrator */
                     pthread_mutex_lock(&mx_concent); /* may have to wait for a fetch to finish */
                     result = lgw_send(pkt);
-
                     pthread_mutex_unlock(&mx_concent); /* free concentrator ASAP */
                     if (result == LGW_HAL_ERROR) {
                         pthread_mutex_lock(&mx_meas_dw);

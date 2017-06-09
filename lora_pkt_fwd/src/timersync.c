@@ -112,9 +112,9 @@ void thread_timersync(void) {
         timersub(&offset_unix_concent, &offset_previous, &offset_drift);
 
         MSG_DEBUG(DEBUG_TIMERSYNC, "  sx1301    = %u (µs) - timeval (%ld,%ld)\n",
-             sx1301_timecount,
-             concentrator_timeval.tv_sec,
-             concentrator_timeval.tv_usec);
+                  sx1301_timecount,
+                  concentrator_timeval.tv_sec,
+                  concentrator_timeval.tv_usec);
         MSG_DEBUG(DEBUG_TIMERSYNC, "  unix_timeval = %ld,%ld\n", unix_timeval.tv_sec, unix_timeval.tv_usec);
 
         MSG("INFO: host/sx1301 time offset=(%lds:%ldµs) - drift=%ldµs\n",
